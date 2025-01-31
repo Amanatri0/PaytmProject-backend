@@ -34,8 +34,6 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
       message: "User password not correct",
     });
   }
-  console.log(hashPassword);
-
   try {
     const existingUser = await client.user.findFirst({
       where: {
@@ -56,7 +54,13 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
         password: hashPassword,
       },
     });
-    console.log(user);
+
+    await client.account.create({
+      data: {
+        balance: 1 + Math.random() * 10000,
+        userId: user.id,
+      },
+    });
 
     res.json({
       message: "User signup successfull",
@@ -96,7 +100,7 @@ userRouter.post("/login", async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ user: user?.email }, JWT_SECRET);
+    const token = jwt.sign({ email: user?.email }, JWT_SECRET);
 
     res.json({
       token: token,
