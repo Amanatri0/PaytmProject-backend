@@ -20,7 +20,7 @@ function userMiddleware(req: Request, res: Response, next: NextFunction) {
 
     const decodedToken = jwt.verify(token, JWT_SECRET) as JwtPayload;
 
-    console.log(decodedToken);
+    // console.log(decodedToken);
 
     if (decodedToken) {
       req.user = decodedToken.email;
