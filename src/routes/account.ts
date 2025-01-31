@@ -67,33 +67,34 @@ accountRouter.post(
     const amount = parseInt(req.body.amount);
     const to = parseInt(req.body.to);
 
-    const account = await client.account.findFirst({
-      where: {
-        id: userAccountId,
-      },
-    });
-
-    if (!account || (account?.balance as number) < amount) {
-      res.status(401).send({
-        message: "Account Balance mot suffecient",
-      });
-    }
-
-    const toAccount = await client.account.findFirst({
-      where: {
-        userId: to,
-      },
-    });
-
-    if (!toAccount) {
-      res.status(403).send({
-        message: "Invalid account, account doesn't exists",
-      });
-    }
-
     try {
+      const account = await client.account.findFirst({
+        where: {
+          id: userAccountId,
+        },
+      });
+
+      if (!account || (account?.balance as number) < amount) {
+        res.status(401).send({
+          message: "Account Balance mot suffecient",
+        });
+        return;
+      }
+
+      const toAccount = await client.account.findFirst({
+        where: {
+          userId: to,
+        },
+      });
+
+      if (!toAccount) {
+        res.status(403).send({
+          message: "Invalid account, account doesn't exists",
+        });
+      }
+
       await client.$transaction(async (txclient) => {
-        await txclient.account.update({
+        const reduceAmount = await txclient.account.update({
           where: {
             id: userAccountId,
           },
@@ -106,7 +107,7 @@ accountRouter.post(
 
         await txclient.account.update({
           where: {
-            userId: to,
+            id: toAccount?.id,
           },
           data: {
             balance: {
@@ -114,10 +115,11 @@ accountRouter.post(
             },
           },
         });
-      });
 
-      res.json({
-        message: "Transaction successfull",
+        res.json({
+          message: "Transaction successfull",
+          balance: reduceAmount.balance,
+        });
       });
     } catch (error) {
       res.status(500).send({

@@ -113,33 +113,6 @@ userRouter.post("/login", async (req, res) => {
   }
 });
 
-userRouter.get(
-  "/user/details",
-  userMiddleware,
-  async (req: Request, res: Response) => {
-    const user = req.user;
-
-    const userDetails = await client.user.findFirst({
-      where: {
-        email: user,
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-      },
-    });
-
-    if (!userDetails) {
-      throw new Error(" User not found ");
-    }
-
-    res.json({
-      userDetails,
-    });
-  }
-);
-
 userRouter.put(
   "/update",
   userMiddleware,
@@ -209,5 +182,28 @@ userRouter.delete(
     }
   }
 );
+
+userRouter.get("/user/details", async (req: Request, res: Response) => {
+  const userDetails = await client.user.findMany({
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      account: {
+        select: {
+          balance: true,
+        },
+      },
+    },
+  });
+
+  if (!userDetails) {
+    throw new Error(" User not found ");
+  }
+
+  res.json({
+    userDetails,
+  });
+});
 
 export { userRouter };
