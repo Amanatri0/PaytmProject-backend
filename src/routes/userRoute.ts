@@ -183,7 +183,7 @@ userRouter.delete(
   }
 );
 
-userRouter.get("/user/details", async (req: Request, res: Response) => {
+userRouter.get("/details", async (req: Request, res: Response) => {
   const userDetails = await client.user.findMany({
     select: {
       id: true,
@@ -206,4 +206,44 @@ userRouter.get("/user/details", async (req: Request, res: Response) => {
   });
 });
 
+userRouter.get(
+  "/currect/user",
+  userMiddleware,
+  async (req: Request, res: Response) => {
+    const user = req.user;
+
+    try {
+      if (!user) {
+        res.status(403).send({
+          message: "User not found",
+        });
+      }
+
+      const userDetails = await client.user.findFirst({
+        where: {
+          email: user,
+        },
+        select: {
+          username: true,
+          email: true,
+          id: true,
+          account: {
+            select: {
+              balance: true,
+            },
+          },
+        },
+      });
+
+      res.json({
+        userDetails,
+      });
+    } catch (error) {
+      res.status(403).send({
+        message: "Something went wrong while fetching user",
+        error: (error as Error).message,
+      });
+    }
+  }
+);
 export { userRouter };
