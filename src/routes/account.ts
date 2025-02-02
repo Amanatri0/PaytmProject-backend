@@ -13,12 +13,11 @@ accountRouter.get(
   async (req: Request, res: Response) => {
     const user = req.user;
 
-    console.log(user);
-
     if (!user) {
       res.status(402).send({
         message: "User not correct", // check if the token is correct or now
       });
+      return;
     }
 
     try {
@@ -29,7 +28,13 @@ accountRouter.get(
         },
       });
 
-      if (!userEmail) throw new Error("User not present");
+      if (!userEmail) {
+        res.status(403).send({
+          message:
+            "User email address not present in the database, Account cannot be fetched",
+        });
+        return;
+      }
 
       // if the user exists check the userid in the accounts table and fetch the account balance and user details
       const accountsUserId = await client.account.findFirst({
@@ -91,6 +96,7 @@ accountRouter.post(
         res.status(403).send({
           message: "Invalid account, account doesn't exists",
         });
+        return;
       }
 
       await client.$transaction(async (txclient) => {

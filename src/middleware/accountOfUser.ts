@@ -23,7 +23,10 @@ async function userAccountMiddleware(
     const token = req.headers.authorization as unknown as string;
 
     if (!token) {
-      throw new Error();
+      res.status(403).send({
+        message: "Token not correct, please verify the token",
+      });
+      return;
     }
 
     const decodedToken = jwt.verify(token, JWT_SECRET) as JwtPayload;

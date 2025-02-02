@@ -23,6 +23,7 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
     res.status(401).send({
       message: "User credentials incorrect",
     });
+    return;
   }
 
   const { username, email, password } = req.body;
@@ -33,6 +34,7 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
     res.json({
       message: "User password not correct",
     });
+    return;
   }
   try {
     const existingUser = await client.user.findFirst({
@@ -42,9 +44,10 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
-      res.json({
+      res.status(303).send({
         message: "User already exists",
       });
+      return;
     }
 
     const user = await client.user.create({
@@ -84,9 +87,10 @@ userRouter.post("/login", async (req, res) => {
     });
 
     if (!user) {
-      res.json({
+      res.status(403).send({
         message: "User is not registered",
       });
+      return;
     }
 
     const decodedPassword = await bcrypt.compare(
@@ -95,9 +99,10 @@ userRouter.post("/login", async (req, res) => {
     );
 
     if (!decodedPassword) {
-      res.json({
+      res.status(403).send({
         message: "User password not correct",
       });
+      return;
     }
 
     const token = jwt.sign({ email: user?.email }, JWT_SECRET);
@@ -118,34 +123,55 @@ userRouter.put(
   userMiddleware,
   async (req: Request, res: Response) => {
     const user = req.user;
-    const { email, username, password } = req.body;
+    const { email, username, oldPassword, newPassword } = req.body;
 
-    const userEmail = await client.user.findFirst({
-      where: {
-        email: user,
-      },
-    });
+    try {
+      const userEmail = await client.user.findFirst({
+        where: {
+          email: user,
+        },
+      });
 
-    console.log(userEmail);
+      if (!userEmail) {
+        res.status(403).send({
+          message: "User is not registered",
+        });
+        return;
+      }
 
-    if (!userEmail) {
-      throw new Error();
+      const verifiedPassword = await bcrypt.compare(
+        oldPassword,
+        userEmail?.password as string
+      );
+
+      if (!verifiedPassword) {
+        res.status(500).send({
+          message: "Password didn't match, please provide the correct password",
+        });
+        return;
+      }
+      const hashPassword = await bcrypt.hash(newPassword, 5);
+
+      await client.user.update({
+        where: {
+          email: userEmail.email,
+        },
+        data: {
+          email: email,
+          username: username,
+          password: hashPassword,
+        },
+      });
+
+      res.json({
+        message: "User updated",
+      });
+    } catch (error) {
+      res.status(404).send({
+        message: "User details was unable to update",
+        error: (error as Error).message,
+      });
     }
-
-    await client.user.update({
-      where: {
-        email: userEmail.email,
-      },
-      data: {
-        email: email,
-        username: username,
-        password: password,
-      },
-    });
-
-    res.json({
-      message: "User updated",
-    });
   }
 );
 
@@ -162,13 +188,36 @@ userRouter.delete(
         },
       });
 
-      if (!userDetails) throw new Error();
+      if (!userDetails) {
+        res.status(403).send({
+          message: "User cannot be found in the database",
+        });
+        return;
+      }
+
+      const accountDetails = await client.account.delete({
+        where: {
+          userId: userDetails.id,
+        },
+      });
+
+      if (!accountDetails) {
+        res.status(403).send({
+          message: "Account cannot be found in the database",
+        });
+        return;
+      }
 
       const deletedUser = await client.user.delete({
         where: {
           email: userDetails.email,
         },
+        omit: {
+          password: true,
+        },
       });
+      console.log("Reached here");
+      console.log(deletedUser);
 
       res.json({
         message: "User deleted successfull",
@@ -183,28 +232,47 @@ userRouter.delete(
   }
 );
 
-userRouter.get("/details", async (req: Request, res: Response) => {
-  const userDetails = await client.user.findMany({
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      account: {
+userRouter.get(
+  "/details",
+  userMiddleware,
+  async (req: Request, res: Response) => {
+    const user = req.user;
+
+    try {
+      if (!user) {
+        res.status(403).send({
+          message: "User not found",
+        });
+        return;
+      }
+
+      const userDetails = await client.user.findMany({
         select: {
-          balance: true,
+          id: true,
+          username: true,
+          email: true,
+          account: {
+            select: {
+              balance: true,
+            },
+          },
         },
-      },
-    },
-  });
+        where: {
+          email: { not: user },
+        },
+      });
 
-  if (!userDetails) {
-    throw new Error(" User not found ");
+      res.json({
+        userDetails,
+      });
+    } catch (error) {
+      res.status(403).send({
+        message: "Cannot find User details",
+        error: (error as Error).message,
+      });
+    }
   }
-
-  res.json({
-    userDetails,
-  });
-});
+);
 
 userRouter.get(
   "/currect/user",
@@ -217,6 +285,7 @@ userRouter.get(
         res.status(403).send({
           message: "User not found",
         });
+        return;
       }
 
       const userDetails = await client.user.findFirst({
