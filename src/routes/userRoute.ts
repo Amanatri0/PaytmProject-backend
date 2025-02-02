@@ -60,7 +60,7 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
 
     await client.account.create({
       data: {
-        balance: 1 + Math.random() * 10000,
+        balance: 10 + Math.random() * 10000,
         userId: user.id,
       },
     });
