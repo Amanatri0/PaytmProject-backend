@@ -27,15 +27,6 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
   }
 
   const { username, email, password } = req.body;
-
-  const hashPassword = (await bcrypt.hash(password, 5)) as unknown as string;
-
-  if (!hashPassword) {
-    res.json({
-      message: "User password not correct",
-    });
-    return;
-  }
   try {
     const existingUser = await client.user.findFirst({
       where: {
@@ -45,7 +36,16 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
 
     if (existingUser) {
       res.status(303).send({
-        message: "User already exists",
+        message: "User already exists, Please login",
+      });
+      return;
+    }
+
+    const hashPassword = (await bcrypt.hash(password, 5)) as unknown as string;
+
+    if (!hashPassword) {
+      res.json({
+        message: "User password not correct",
       });
       return;
     }
