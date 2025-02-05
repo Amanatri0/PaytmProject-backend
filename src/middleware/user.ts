@@ -10,7 +10,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
 
 function userMiddleware(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers.authorization as unknown as string;
+  const token = req.headers.authorization;
 
   try {
     if (!token) {
@@ -21,8 +21,6 @@ function userMiddleware(req: Request, res: Response, next: NextFunction) {
     }
 
     const decodedToken = jwt.verify(token, JWT_SECRET) as JwtPayload;
-
-    // console.log(decodedToken);
 
     if (decodedToken) {
       req.user = decodedToken.email;
