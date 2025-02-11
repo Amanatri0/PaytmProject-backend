@@ -10,7 +10,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
 
 function userMiddleware(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers.authorization;
+  const token = req.headers["authorization"];
 
   try {
     if (!token) {
@@ -20,13 +20,17 @@ function userMiddleware(req: Request, res: Response, next: NextFunction) {
       return;
     }
 
-    const decodedToken = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const decodedToken = jwt.verify(token, JWT_SECRET);
 
-    if (decodedToken) {
-      req.user = decodedToken.email;
-      next();
+    if (typeof decodedToken == "string") {
+      res.status(401).send({
+        message: "Token not valid",
+      });
       return;
     }
+
+    req.user = decodedToken.email;
+    next();
   } catch (error) {
     res.status(404).send({
       message: "Cannot passthrough user middleware",

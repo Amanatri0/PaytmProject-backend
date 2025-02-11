@@ -5,19 +5,13 @@ import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
 import { userMiddleware } from "../middleware/user";
-import { z } from "zod";
+import { SignupSchema } from "../zod/types";
 
 const client = new PrismaClient();
 const userRouter = Router();
 
-const userSignupValidation = z.object({
-  username: z.string(),
-  email: z.string().email(),
-  password: z.string(),
-});
-
 userRouter.post("/signup", async (req: Request, res: Response) => {
-  const success = userSignupValidation.safeParse(req.body);
+  const success = SignupSchema.safeParse(req.body);
 
   if (!success) {
     res.status(401).send({
@@ -105,7 +99,7 @@ userRouter.post("/login", async (req, res) => {
       return;
     }
 
-    const token = jwt.sign({ user }, JWT_SECRET);
+    const token = jwt.sign({ email: user.email }, JWT_SECRET);
 
     res.json({
       token: token,

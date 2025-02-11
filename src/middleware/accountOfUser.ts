@@ -29,7 +29,14 @@ async function userAccountMiddleware(
       return;
     }
 
-    const decodedToken = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+
+    if (typeof decodedToken == "string") {
+      res.status(401).send({
+        message: "Token not valid",
+      });
+      return;
+    }
 
     const user = decodedToken.email;
 
