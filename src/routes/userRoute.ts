@@ -5,7 +5,7 @@ import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
 import { userMiddleware } from "../middleware/user";
-import { SignupSchema } from "../zod/types";
+import { LoginSchema, SignupSchema } from "../zod/types";
 
 const client = new PrismaClient();
 const userRouter = Router();
@@ -71,6 +71,15 @@ userRouter.post("/signup", async (req: Request, res: Response) => {
 });
 
 userRouter.post("/login", async (req, res) => {
+  const success = LoginSchema.safeParse(req.body);
+
+  if (!success) {
+    res.status(401).send({
+      message: "User credentials incorrect",
+    });
+    return;
+  }
+
   const { email, password } = req.body;
 
   try {
